@@ -2,11 +2,21 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"golang.org/x/crypto/acme/autocert"
-	"log"
 	"net/http"
 	"time"
 )
+
+func listenAndServe(handler http.Handler, addr string, timeout time.Duration) error {
+	srv := &http.Server{
+		Handler:      handler,
+		Addr:         addr,
+		ReadTimeout:  timeout,
+		WriteTimeout: timeout,
+	}
+	return srv.ListenAndServe()
+}
 
 func listenAndServeTLS(handler http.Handler, addr string, timeout time.Duration, host, certDir string) error {
 	m := &autocert.Manager{
@@ -33,5 +43,11 @@ func main() {
 	flag.Parse()
 
 	handler := http.FileServer(http.Dir(*dir))
-	log.Fatal(listenAndServeTLS(handler, *addr, *timeout, *tlsHost, *certDir))
+	if *tlsHost == "" {
+		fmt.Printf("addr=%v dir=%v timeout=%v", *addr, *dir, *timeout)
+		panic(listenAndServe(handler, *addr, *timeout))
+	} else {
+		fmt.Printf("addr=%v dir=%v timeout=%v https=%v cert=%v", *addr, *dir, *timeout, *tlsHost, *certDir)
+		panic(listenAndServeTLS(handler, *addr, *timeout, *tlsHost, *certDir))
+	}
 }
