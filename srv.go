@@ -3,9 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"golang.org/x/crypto/acme/autocert"
 	"net/http"
 	"time"
+
+	"golang.org/x/crypto/acme/autocert"
 )
 
 func listenAndServe(handler http.Handler, addr string, timeout time.Duration) error {
@@ -35,19 +36,19 @@ func listenAndServeTLS(handler http.Handler, addr string, timeout time.Duration,
 }
 
 func main() {
-	addr := flag.String("addr", ":443", "")
-	dir := flag.String("dir", ".", "")
-	tlsHost := flag.String("https", "", "")
-	certDir := flag.String("cert", ".", "")
-	timeout := flag.Duration("timeout", time.Minute, "")
+	addr := flag.String("addr", ":443", "address the server listens to")
+	dir := flag.String("dir", ".", "directory to serve")
+	tlsHost := flag.String("https", "", "domain name of the server (TLS is disabled if empty)")
+	certDir := flag.String("cert", ".", "directory for storing TLS certificates")
+	timeout := flag.Duration("timeout", time.Minute, "server timeout")
 	flag.Parse()
 
 	handler := http.FileServer(http.Dir(*dir))
 	if *tlsHost == "" {
-		fmt.Printf("addr=%v dir=%v timeout=%v", *addr, *dir, *timeout)
+		fmt.Printf("Serving %v on %v\n", *dir, *addr)
 		panic(listenAndServe(handler, *addr, *timeout))
 	} else {
-		fmt.Printf("addr=%v dir=%v timeout=%v https=%v cert=%v", *addr, *dir, *timeout, *tlsHost, *certDir)
+		fmt.Printf("Serving %v on %v with TLS (%v)\n", *dir, *addr, *tlsHost)
 		panic(listenAndServeTLS(handler, *addr, *timeout, *tlsHost, *certDir))
 	}
 }
