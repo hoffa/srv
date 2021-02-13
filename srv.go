@@ -35,20 +35,21 @@ func listenAndServeTLS(handler http.Handler, addr string, timeout time.Duration,
 	return srv.ListenAndServeTLS("", "")
 }
 
+func redirectTLS(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "https://"+r.Host+r.RequestURI, http.StatusMovedPermanently)
+}
+
 func main() {
-	addr := flag.String("addr", ":443", "address the server listens to")
 	dir := flag.String("dir", ".", "directory to serve")
-	tlsHost := flag.String("https", "", "domain name of the server (TLS is disabled if empty)")
 	certDir := flag.String("cert", ".", "directory for storing TLS certificates")
 	timeout := flag.Duration("timeout", time.Minute, "server timeout")
 	flag.Parse()
+	host := flag.Arg(0)
 
 	handler := http.FileServer(http.Dir(*dir))
-	if *tlsHost == "" {
-		fmt.Printf("Serving %v on %v\n", *dir, *addr)
-		panic(listenAndServe(handler, *addr, *timeout))
-	} else {
-		fmt.Printf("Serving %v on %v with TLS (%v)\n", *dir, *addr, *tlsHost)
-		panic(listenAndServeTLS(handler, *addr, *timeout, *tlsHost, *certDir))
-	}
+	fmt.Printf("Serving %v on %v\n", *dir, host)
+	go func() {
+		panic(listenAndServe(http.HandlerFunc(redirectTLS), ":80", *timeout))
+	}()
+	panic(listenAndServeTLS(handler, ":443", *timeout, host, *certDir))
 }
