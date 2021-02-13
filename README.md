@@ -13,5 +13,5 @@ go get github.com/hoffa/srv
 ## Usage
 
 ```
-srv -https mydomain.com
+srv mydomain.com
 ```
