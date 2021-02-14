@@ -10,6 +10,12 @@ Serve files over HTTPS.
 go get github.com/hoffa/srv
 ```
 
+## Example
+
+```
+srv -n mydomain.com
+```
+
 ## Usage
 
 ```
@@ -26,10 +32,4 @@ Usage of srv:
         HTTP redirect port (default 80)
   -t duration
         timeout (default 1m0s)
-```
-
-## Example
-
-```
-srv -n mydomain.com
 ```
