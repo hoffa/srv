@@ -3,13 +3,16 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"os"
+	"strconv"
 	"time"
 
 	"golang.org/x/crypto/acme/autocert"
 )
 
-func listenAndServe(handler http.Handler, addr string, timeout time.Duration) error {
+func listenAndServe(addr string, timeout time.Duration, handler http.Handler) error {
 	srv := &http.Server{
 		Handler:      handler,
 		Addr:         addr,
@@ -19,7 +22,7 @@ func listenAndServe(handler http.Handler, addr string, timeout time.Duration) er
 	return srv.ListenAndServe()
 }
 
-func listenAndServeTLS(handler http.Handler, addr string, timeout time.Duration, host, certDir string) error {
+func listenAndServeTLS(addr string, timeout time.Duration, host, certDir string, handler http.Handler) error {
 	m := &autocert.Manager{
 		Cache:      autocert.DirCache(certDir),
 		Prompt:     autocert.AcceptTOS,
@@ -35,21 +38,53 @@ func listenAndServeTLS(handler http.Handler, addr string, timeout time.Duration,
 	return srv.ListenAndServeTLS("", "")
 }
 
-func redirectTLS(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "https://"+r.Host+r.RequestURI, http.StatusMovedPermanently)
+func tempDir() string {
+	dir, err := ioutil.TempDir("", "")
+	if err != nil {
+		panic(err)
+	}
+	return dir
 }
 
 func main() {
-	dir := flag.String("dir", ".", "directory to serve")
-	certDir := flag.String("cert", ".", "directory for storing TLS certificates")
-	timeout := flag.Duration("timeout", time.Minute, "server timeout")
-	flag.Parse()
-	host := flag.Arg(0)
+	var arg struct {
+		host      string
+		httpsPort int
+		httpPort  int
+		dir       string
+		certDir   string
+		timeout   time.Duration
+	}
 
-	handler := http.FileServer(http.Dir(*dir))
-	fmt.Printf("Serving %v on %v\n", *dir, host)
+	flag.StringVar(&arg.host, "n", "", "domain name (required)")
+	flag.IntVar(&arg.httpsPort, "p", 443, "HTTPS port")
+	flag.IntVar(&arg.httpPort, "q", 80, "HTTP redirect port")
+	flag.StringVar(&arg.dir, "d", ".", "directory to serve")
+	flag.StringVar(&arg.certDir, "c", "", "directory to store TLS certificates (temporary directory if empty)")
+	flag.DurationVar(&arg.timeout, "t", time.Minute, "timeout")
+	flag.Parse()
+
+	if arg.host == "" {
+		flag.Usage()
+		os.Exit(1)
+	}
+
+	if arg.certDir == "" {
+		arg.certDir = tempDir()
+	}
+
+	fmt.Printf("%+v\n", arg)
+
+	httpsPort := strconv.Itoa(arg.httpsPort)
+	httpPort := strconv.Itoa(arg.httpPort)
+
 	go func() {
-		panic(listenAndServe(http.HandlerFunc(redirectTLS), ":80", *timeout))
+		panic(listenAndServe(":"+httpPort, arg.timeout, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			url := "https://" + arg.host + ":" + httpsPort + r.RequestURI
+			http.Redirect(w, r, url, http.StatusMovedPermanently)
+		})))
 	}()
-	panic(listenAndServeTLS(handler, ":443", *timeout, host, *certDir))
+
+	handler := http.FileServer(http.Dir(arg.dir))
+	panic(listenAndServeTLS(":"+httpsPort, arg.timeout, arg.host, arg.certDir, handler))
 }
