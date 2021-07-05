@@ -2,8 +2,8 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -11,6 +11,13 @@ import (
 
 	"golang.org/x/crypto/acme/autocert"
 )
+
+func loggingHandler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Println(r.RemoteAddr, r.Method, r.URL.Path)
+		h.ServeHTTP(w, r)
+	})
+}
 
 func listenAndServe(addr string, timeout time.Duration, handler http.Handler) error {
 	srv := &http.Server{
@@ -73,7 +80,7 @@ func main() {
 		arg.certDir = tempDir()
 	}
 
-	fmt.Printf("%+v\n", arg)
+	log.Printf("%+v\n", arg)
 
 	httpsPort := strconv.Itoa(arg.httpsPort)
 	httpPort := strconv.Itoa(arg.httpPort)
@@ -85,6 +92,6 @@ func main() {
 		})))
 	}()
 
-	handler := http.FileServer(http.Dir(arg.dir))
+	handler := loggingHandler(http.FileServer(http.Dir(arg.dir)))
 	panic(listenAndServeTLS(":"+httpsPort, arg.timeout, arg.host, arg.certDir, handler))
 }
