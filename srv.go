@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -18,55 +17,36 @@ func loggingHandler(h http.Handler) http.Handler {
 	})
 }
 
-func listenAndServeTLS(addr string, timeout time.Duration, host, certDir string, handler http.Handler) error {
+func main() {
+	var domain string
+	var addr string
+	var dir string
+	var certDir string
+	var timeout time.Duration
+
+	flag.StringVar(&domain, "n", "", "domain name (required)")
+	flag.StringVar(&dir, "d", "", "directory to serve (required)")
+	flag.StringVar(&certDir, "c", "", "directory for storing TLS certificates (required)")
+	flag.StringVar(&addr, "p", ":443", "HTTPS address")
+	flag.DurationVar(&timeout, "t", 10*time.Second, "timeout")
+	flag.Parse()
+
+	if domain == "" || dir == "" || certDir == "" {
+		flag.Usage()
+		os.Exit(1)
+	}
+
 	m := &autocert.Manager{
 		Cache:      autocert.DirCache(certDir),
 		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(host),
+		HostPolicy: autocert.HostWhitelist(domain),
 	}
 	srv := &http.Server{
-		Handler:      handler,
+		Handler:      loggingHandler(http.FileServer(http.Dir(dir))),
 		Addr:         addr,
 		ReadTimeout:  timeout,
 		WriteTimeout: timeout,
 		TLSConfig:    m.TLSConfig(),
 	}
-	return srv.ListenAndServeTLS("", "")
-}
-
-func tempDir() string {
-	dir, err := ioutil.TempDir("", "")
-	if err != nil {
-		panic(err)
-	}
-	return dir
-}
-
-func main() {
-	var arg struct {
-		domain  string
-		addr    string
-		dir     string
-		certDir string
-		timeout time.Duration
-	}
-
-	flag.StringVar(&arg.domain, "n", "", "domain name (required)")
-	flag.StringVar(&arg.addr, "p", ":443", "HTTPS address")
-	flag.StringVar(&arg.dir, "d", ".", "directory to serve")
-	flag.StringVar(&arg.certDir, "c", "", "directory to store TLS certificates (temporary directory if not set)")
-	flag.DurationVar(&arg.timeout, "t", 10*time.Second, "timeout")
-	flag.Parse()
-
-	handler := loggingHandler(http.FileServer(http.Dir(arg.dir)))
-
-	if arg.domain == "" {
-		flag.Usage()
-		os.Exit(1)
-	}
-
-	if arg.certDir == "" {
-		arg.certDir = tempDir()
-	}
-	log.Fatal(listenAndServeTLS(arg.addr, arg.timeout, arg.domain, arg.certDir, handler))
+	log.Fatal(srv.ListenAndServeTLS("", ""))
 }
