@@ -65,7 +65,7 @@ func main() {
 	flag.StringVar(&arg.httpsAddr, "p", ":443", "HTTPS address")
 	flag.StringVar(&arg.dir, "d", ".", "directory to serve")
 	flag.StringVar(&arg.certDir, "c", "", "directory to store TLS certificates (temporary directory if not set)")
-	flag.DurationVar(&arg.timeout, "t", time.Minute, "timeout")
+	flag.DurationVar(&arg.timeout, "t", 10*time.Second, "timeout")
 	flag.Parse()
 
 	handler := loggingHandler(http.FileServer(http.Dir(arg.dir)))
