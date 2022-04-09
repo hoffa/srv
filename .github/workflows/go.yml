@@ -10,6 +10,8 @@ jobs:
       - uses: actions/setup-go@v3
       - run: go test
       - run: |
+          git tag --force v1
+          git push --force origin v1
           mkdir dist
           GOOS=linux GOARCH=arm go build -o dist/linux_arm
           GOOS=linux GOARCH=amd64 go build -o dist/linux_amd64
