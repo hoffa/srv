@@ -24,5 +24,3 @@ jobs:
       run: go test -v ./...
       
     - run: gh auth login
-      env:
-        GH_TOKEN: $
