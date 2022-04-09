@@ -5,8 +5,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
-	"strconv"
 	"time"
 
 	"golang.org/x/crypto/acme/autocert"
@@ -56,42 +54,31 @@ func tempDir() string {
 func main() {
 	var arg struct {
 		host      string
-		httpsPort int
-		httpPort  int
+		httpsAddr string
+		httpAddr  string
 		dir       string
 		certDir   string
 		timeout   time.Duration
 	}
 
-	flag.StringVar(&arg.host, "n", "", "domain name (required)")
-	flag.IntVar(&arg.httpsPort, "p", 443, "HTTPS port")
-	flag.IntVar(&arg.httpPort, "q", 80, "HTTP redirect port")
+	flag.StringVar(&arg.host, "n", "", "domain name (HTTPS disabled if not set)")
+	flag.StringVar(&arg.httpsAddr, "p", ":443", "HTTPS address")
+	flag.StringVar(&arg.httpAddr, "q", ":80", "HTTP address")
 	flag.StringVar(&arg.dir, "d", ".", "directory to serve")
-	flag.StringVar(&arg.certDir, "c", "", "directory to store TLS certificates (temporary directory if empty)")
+	flag.StringVar(&arg.certDir, "c", "", "directory to store TLS certificates (temporary directory if not set)")
 	flag.DurationVar(&arg.timeout, "t", time.Minute, "timeout")
 	flag.Parse()
 
-	if arg.host == "" {
-		flag.Usage()
-		os.Exit(1)
-	}
-
-	if arg.certDir == "" {
-		arg.certDir = tempDir()
-	}
-
-	log.Printf("%+v\n", arg)
-
-	httpsPort := strconv.Itoa(arg.httpsPort)
-	httpPort := strconv.Itoa(arg.httpPort)
-
-	go func() {
-		panic(listenAndServe(":"+httpPort, arg.timeout, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			url := "https://" + arg.host + ":" + httpsPort + r.RequestURI
-			http.Redirect(w, r, url, http.StatusMovedPermanently)
-		})))
-	}()
-
 	handler := loggingHandler(http.FileServer(http.Dir(arg.dir)))
-	panic(listenAndServeTLS(":"+httpsPort, arg.timeout, arg.host, arg.certDir, handler))
+
+	if arg.host != "" {
+		if arg.certDir == "" {
+			arg.certDir = tempDir()
+		}
+		go func() {
+			panic(listenAndServeTLS(arg.httpsAddr, arg.timeout, arg.host, arg.certDir, handler))
+		}()
+	}
+
+	panic(listenAndServe(arg.httpAddr, arg.timeout, handler))
 }
