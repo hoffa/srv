@@ -7,13 +7,13 @@ Easily serve files over HTTPS.
 
 ## Installation
 
-```
+```bash
 go get github.com/hoffa/srv
 ```
 
 ## Example
 
-```
+```bash
 mkdir www
 echo "<h1>Hi!</h1>" > www/index.html
 mkdir certs
