@@ -23,4 +23,6 @@ jobs:
     - name: Test
       run: go test -v ./...
       
-    - run: gh release create v1.2.3 --generate-notes
+    - run: gh auth login
+      env:
+        GH_TOKEN: $
