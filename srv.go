@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"golang.org/x/crypto/acme/autocert"
@@ -55,15 +56,13 @@ func main() {
 	var arg struct {
 		host      string
 		httpsAddr string
-		httpAddr  string
 		dir       string
 		certDir   string
 		timeout   time.Duration
 	}
 
-	flag.StringVar(&arg.host, "n", "", "domain name (HTTPS disabled if not set)")
+	flag.StringVar(&arg.host, "n", "", "domain name (required)")
 	flag.StringVar(&arg.httpsAddr, "p", ":443", "HTTPS address")
-	flag.StringVar(&arg.httpAddr, "q", ":80", "HTTP address")
 	flag.StringVar(&arg.dir, "d", ".", "directory to serve")
 	flag.StringVar(&arg.certDir, "c", "", "directory to store TLS certificates (temporary directory if not set)")
 	flag.DurationVar(&arg.timeout, "t", time.Minute, "timeout")
@@ -71,14 +70,13 @@ func main() {
 
 	handler := loggingHandler(http.FileServer(http.Dir(arg.dir)))
 
-	if arg.host != "" {
-		if arg.certDir == "" {
-			arg.certDir = tempDir()
-		}
-		go func() {
-			panic(listenAndServeTLS(arg.httpsAddr, arg.timeout, arg.host, arg.certDir, handler))
-		}()
+	if arg.host == "" {
+		flag.Usage()
+		os.Exit(1)
 	}
 
-	panic(listenAndServe(arg.httpAddr, arg.timeout, handler))
+	if arg.certDir == "" {
+		arg.certDir = tempDir()
+	}
+	log.Fatal(listenAndServeTLS(arg.httpsAddr, arg.timeout, arg.host, arg.certDir, handler))
 }
