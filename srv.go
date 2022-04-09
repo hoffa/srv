@@ -18,16 +18,6 @@ func loggingHandler(h http.Handler) http.Handler {
 	})
 }
 
-func listenAndServe(addr string, timeout time.Duration, handler http.Handler) error {
-	srv := &http.Server{
-		Handler:      handler,
-		Addr:         addr,
-		ReadTimeout:  timeout,
-		WriteTimeout: timeout,
-	}
-	return srv.ListenAndServe()
-}
-
 func listenAndServeTLS(addr string, timeout time.Duration, host, certDir string, handler http.Handler) error {
 	m := &autocert.Manager{
 		Cache:      autocert.DirCache(certDir),
@@ -54,15 +44,15 @@ func tempDir() string {
 
 func main() {
 	var arg struct {
-		host      string
-		httpsAddr string
-		dir       string
-		certDir   string
-		timeout   time.Duration
+		domain  string
+		addr    string
+		dir     string
+		certDir string
+		timeout time.Duration
 	}
 
-	flag.StringVar(&arg.host, "n", "", "domain name (required)")
-	flag.StringVar(&arg.httpsAddr, "p", ":443", "HTTPS address")
+	flag.StringVar(&arg.domain, "n", "", "domain name (required)")
+	flag.StringVar(&arg.addr, "p", ":443", "HTTPS address")
 	flag.StringVar(&arg.dir, "d", ".", "directory to serve")
 	flag.StringVar(&arg.certDir, "c", "", "directory to store TLS certificates (temporary directory if not set)")
 	flag.DurationVar(&arg.timeout, "t", 10*time.Second, "timeout")
@@ -70,7 +60,7 @@ func main() {
 
 	handler := loggingHandler(http.FileServer(http.Dir(arg.dir)))
 
-	if arg.host == "" {
+	if arg.domain == "" {
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -78,5 +68,5 @@ func main() {
 	if arg.certDir == "" {
 		arg.certDir = tempDir()
 	}
-	log.Fatal(listenAndServeTLS(arg.httpsAddr, arg.timeout, arg.host, arg.certDir, handler))
+	log.Fatal(listenAndServeTLS(arg.addr, arg.timeout, arg.domain, arg.certDir, handler))
 }
