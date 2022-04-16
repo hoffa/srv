@@ -16,6 +16,5 @@ go get github.com/hoffa/srv
 ```bash
 mkdir www
 echo "<h1>Hi!</h1>" > www/index.html
-mkdir certs
 srv -n mydomain.com -d www -c certs
 ```
