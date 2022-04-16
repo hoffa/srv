@@ -12,9 +12,8 @@ import (
 
 func loggingHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		t := time.Now()
+		log.Println(r.RemoteAddr, r.Method, r.URL.Path)
 		h.ServeHTTP(w, r)
-		log.Println(r.RemoteAddr, r.Method, r.URL.Path, time.Since(t))
 	})
 }
 
